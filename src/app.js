@@ -1,104 +1,72 @@
 function wait(milliseconds) {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(), milliseconds);
-  });
+    return new Promise((resolve) => {
+        setTimeout(() => resolve(true), milliseconds);
+    });
 }
 
 function throttle(cb, opts) {
-  let timeoutId = null;
-  let then = 0;
+    let timeoutId = null;
+    let then = 0;
+    let result;
 
-  function _throttle(...args) {
-    const now = performance.now();
-
-    then = then || now;
-
-    clearTimeout(timeoutId);
-
-    if (now - then > opts.delay) {
-      then = now;
-
-      console.log("then");
-
-      return new Promise((resolve) => {
-        resolve(cb(...args));
-      });
-    }
-
-    return new Promise((resolve) => {
-      timeoutId = setTimeout(() => {
+    function update(now, ...args) {
         then = now;
 
-        console.log("timeout");
-        resolve(cb(...args));
-      }, opts.delay);
-    });
-  }
+        try {
+            result = cb(...args);
+        } catch (error) {
+            if (opts.onError) {
+                opts.onError(error);
+            }
+        }
+    }
 
-  _throttle.cancel = () => {
-    clearTimeout(timeoutId);
-  };
+    function _throttle(...args) {
+        if (!opts.isLeading) {
+            clearTimeout(timeoutId);
+            const now = performance.now();
+            then = then || now;
 
-  return _throttle;
+            if (now - then > opts.delay) {
+                update(now, ...args);
+                console.log('per delay');
+            }
+
+            timeoutId = setTimeout(() => {
+                update(now, ...args);
+                console.log('timeout');
+            }, opts.delay);
+
+            return result;
+        }
+
+        const now = performance.now();
+
+        if (!then) {
+            console.log('first leading execution', 'timer started');
+
+            update(now, ...args);
+
+            return result;
+        }
+
+        if (now - then > opts.delay) {
+            update(now, ...args);
+            console.log('per leading delay');
+        }
+
+        return result;
+    }
+
+    _throttle.cancel = () => {
+        clearTimeout(timeoutId);
+    };
+
+    _throttle.invoke = (...args) => {
+        const now = performance.now();
+
+        update(now, ...args);
+    };
+
+    return _throttle;
 }
-
-const add = (num1, num2) => {
-  return num1 + num2;
-};
-
-const superHandler = throttle(add, {
-  delay: 1000,
-  //   isLeading: true,
-  //   onError: (error) => {
-  //     console.log(error);
-  //   },
-});
-
-// setTimeout(() => {
-//   setInterval(() => {
-//     superHandler(2, 5);
-//   }, 900);
-// }, 1000);
-
-superHandler(2, 5);
-
-// async function wrapper() {
-//   let output;
-
-//   output = superHandler(1, 1);
-//   await wait(100);
-//   output = superHandler(2, 2);
-//   await wait(100);
-//   output = superHandler(3, 3);
-//   await wait(100);
-//   output = superHandler(4, 4);
-
-//   await wait(1000);
-
-//   console.log(output);
-
-//   output = superHandler(5, 5);
-//   console.log("5,5", output);
-
-//   await wait(100);
-//   output = superHandler(6, 6);
-//   await wait(100);
-//   output = superHandler(7, 7);
-//   await wait(1000);
-
-//   console.log(output);
-// }
-
-// wrapper();
-
-// setInterval(() => {
-//   superHandler(2, 5);
-// }, 50);
-
-// setTimeout(() => {
-//   superHandler(2, 5);
-// }, 500);
-
-// setTimeout(() => {
-//   superHandler.cancel();
-// }, 900);

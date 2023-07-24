@@ -1,43 +1,82 @@
-export function throttle(cb, opts) {
+export function wait(milliseconds) {
+    return new Promise((resolve) => {
+        setTimeout(() => resolve(true), milliseconds);
+    });
+}
+
+interface Options {
+    delay: number;
+    isLeading?: boolean;
+    onError?: (error: Error) => void;
+}
+
+type Callback<T, C> = (...args: C[]) => T | void;
+
+type Throttle<T, C> = Callback<T, C> & {
+    cancel: () => void;
+    invoke: (...args: C[]) => T | void;
+};
+
+export function throttle<T, C>(cb: Callback<T, C>, opts: Options): Throttle<T, C> {
     let timeoutId = null;
     let then = 0;
+    let result;
+
+    function update(now, ...args) {
+        then = now;
+
+        try {
+            result = cb(...args);
+        } catch (error) {
+            if (opts.onError) {
+                opts.onError(error);
+            }
+        }
+    }
 
     function _throttle(...args) {
-        const now = performance.now();
+        if (!opts.isLeading) {
+            timeoutId && clearTimeout(timeoutId);
 
-        then = then || now;
+            const now = performance.now();
 
-        clearTimeout(timeoutId);
+            then = then ?? now;
 
-        if (now - then > opts.delay) {
-            then = now;
+            if (now - then > opts.delay) {
+                update(now, ...args);
+            }
 
-            console.log('then');
+            timeoutId = setTimeout(() => {
+                update(now, ...args);
+            }, opts.delay);
 
-            return new Promise((resolve) => {
-                resolve(cb(...args));
-            });
+            return result;
         }
 
-        return new Promise((resolve) => {
-            timeoutId = setTimeout(() => {
-                then = now;
+        const now = performance.now();
 
-                console.log('timeout');
-                resolve(cb(...args));
-            }, opts.delay);
-        });
+        if (!then) {
+            update(now, ...args);
+
+            return result;
+        }
+
+        if (now - then > opts.delay) {
+            update(now, ...args);
+        }
+
+        return result;
     }
 
     _throttle.cancel = () => {
         clearTimeout(timeoutId);
     };
 
-    return _throttle;
-}
+    _throttle.invoke = (...args) => {
+        const now = performance.now();
 
-export function wait(milliseconds: number = 0): Promise<void> {
-    return new Promise((resolve) => {
-        setTimeout(() => resolve(), milliseconds);
-    });
+        update(now, ...args);
+    };
+
+    return _throttle;
 }

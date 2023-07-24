@@ -1,67 +1,82 @@
 import { jest, describe, expect, test } from '@jest/globals';
-import { throttle, wait } from '../throttle';
-
-jest.useFakeTimers();
+import { throttle } from '../throttle';
 
 const add = (num1: number, num2: number): number => {
     return num1 + num2;
 };
 
+const getError = () => {
+    return Promise.reject('Error');
+};
+
 describe('Throttle', () => {
+    jest.useFakeTimers();
+
     test('The function gets called only once per delay', () => {
-        const superHandler = throttle(add, {
+        const f = jest.fn();
+
+        const superHandler = throttle(f, {
             delay: 1000,
         });
 
-        for (let i = 0; i < 1000; i++) {
-            superHandler(1, 1);
+        for (let i = 0; i < 100; i++) {
+            superHandler();
         }
 
-        expect(superHandler).toHaveBeenCalledTimes(1);
+        jest.runAllTimers();
+
+        expect(f).toHaveBeenCalledTimes(1);
     });
 
-    test('It can be canceled', () => {
-        const superHandler = throttle(add, {
+    test('The function gets called only once per delay in leading mode', () => {
+        const f = jest.fn();
+
+        const superHandler = throttle(f, {
             delay: 1000,
+            isLeading: true,
         });
 
-        superHandler(1, 1);
-        superHandler(2, 2);
+        for (let i = 0; i < 100; i++) {
+            superHandler();
+        }
 
-        superHandler.cancel();
+        jest.runAllTimers();
 
-        expect(superHandler).toHaveBeenCalledTimes(0);
+        expect(f).toHaveBeenCalledTimes(1);
     });
 
-    test('It returns a cached value', async () => {
-        let output = null;
-
+    test('The function returns the previous value in tailing mode', async () => {
+        let output;
         const superHandler = throttle(add, {
-            delay: 100,
+            delay: 1000,
         });
 
         output = superHandler(1, 1);
 
-        expect(output).toBe(null);
-
-        output = superHandler(2, 2);
-        output = superHandler(3, 3);
-        output = superHandler(4, 4);
-
-        await wait(1000);
+        expect(output).toBe(undefined);
 
         jest.runAllTimers();
 
-        expect(superHandler()).toHaveBeenCalledTimes(1);
+        output = superHandler(2, 2);
 
-        expect(output).toBe(8);
+        expect(output).toBe(2);
+
+        output = superHandler(3, 3);
+
+        expect(output).toBe(2);
+
+        jest.runAllTimers();
+
+        output = superHandler(4, 4);
+
+        expect(output).toBe(6);
     });
 
-    test('It can run in leading mode', async () => {
-        let output = null;
+    test('The function returns the previous / current value in leading mode', () => {
+        let output;
 
         const superHandler = throttle(add, {
-            delay: 100,
+            delay: 1000,
             isLeading: true,
         });
 
@@ -73,20 +88,38 @@ describe('Throttle', () => {
 
         expect(output).toBe(2);
 
+        jest.advanceTimersByTime(1500);
+
         output = superHandler(3, 3);
 
-        expect(output).toBe(2);
-
-        output = superHandler(4, 4);
-
-        await wait(1000);
-
-        jest.runAllTimers();
-
-        expect(output).toBe(8);
-
-        expect(superHandler()).toHaveBeenCalledTimes(1);
+        expect(output).toBe(6);
     });
 
-    test('It can handle errors', async () => {});
+    // test('can be invoked regardless of the delay', () => {
+    //     let output;
+
+    //     const superHandler = throttle(add, {
+    //         delay: 1000,
+    //     });
+
+    //     output = superHandler.invoke(1, 1);
+
+    //     expect(output).toBe(2);
+    // });
+
+    // test('the delay can be canceled', () => {
+    // @todo
+    // });
+
+    // test('can catch errors', async () => {
+    // @todo
+    //     const superHandler = throttle(getError, {
+    //         delay: 1000,
+    //         onError: (error) => {
+    //             throw error;
+    //         },
+    //     });
+    //     await superHandler();
+    //     expect(superHandler).toThrow('Error');
+    // });
 });
