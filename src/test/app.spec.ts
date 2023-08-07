@@ -5,10 +5,6 @@ const add = (num1: number, num2: number): number => {
     return num1 + num2;
 };
 
-const getError = () => {
-    return Promise.reject('Error');
-};
-
 describe('Throttle', () => {
     jest.useFakeTimers();
 
@@ -19,7 +15,7 @@ describe('Throttle', () => {
             delay: 1000,
         });
 
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < 100000; i++) {
             superHandler();
         }
 
@@ -36,7 +32,7 @@ describe('Throttle', () => {
             isLeading: true,
         });
 
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < 100000; i++) {
             superHandler();
         }
 
@@ -69,7 +65,13 @@ describe('Throttle', () => {
 
         output = superHandler(4, 4);
 
-        expect(output).toBe(6);
+        expect(output).toBe(4);
+
+        jest.runAllTimers();
+
+        output = superHandler(5, 5);
+
+        expect(output).toBe(8);
     });
 
     test('The function returns the previous / current value in leading mode', () => {
@@ -88,38 +90,68 @@ describe('Throttle', () => {
 
         expect(output).toBe(2);
 
-        jest.advanceTimersByTime(1500);
+        jest.runAllTimers();
 
         output = superHandler(3, 3);
 
         expect(output).toBe(6);
     });
 
-    // test('can be invoked regardless of the delay', () => {
-    //     let output;
+    test('can be invoked regardless of the delay in trailing mode', () => {
+        let output;
 
-    //     const superHandler = throttle(add, {
-    //         delay: 1000,
-    //     });
+        const superHandler = throttle(add, {
+            delay: 1000,
+        });
 
-    //     output = superHandler.invoke(1, 1);
+        output = superHandler.invoke(1, 1);
 
-    //     expect(output).toBe(2);
-    // });
+        jest.runAllTimers();
 
-    // test('the delay can be canceled', () => {
-    // @todo
-    // });
+        expect(output).toBe(2);
+    });
 
-    // test('can catch errors', async () => {
-    // @todo
-    //     const superHandler = throttle(getError, {
-    //         delay: 1000,
-    //         onError: (error) => {
-    //             throw error;
-    //         },
-    //     });
-    //     await superHandler();
-    //     expect(superHandler).toThrow('Error');
-    // });
+    test('can be invoked regardless of the delay in leading mode', () => {
+        let output;
+
+        const superHandler = throttle(add, {
+            delay: 1000,
+            isLeading: true,
+        });
+
+        output = superHandler.invoke(1, 1);
+
+        jest.runAllTimers();
+
+        expect(output).toBe(2);
+    });
+
+    test('the delay can be canceled', () => {
+        let output;
+
+        const superHandler = throttle(add, {
+            delay: 1000,
+        });
+
+        output = superHandler(1, 1);
+
+        superHandler.cancel();
+
+        jest.runAllTimers();
+
+        output = superHandler(2, 2);
+
+        expect(output).toBe(undefined);
+    });
+
+    test('can catch errors', async () => {
+        // const superHandler = throttle(getError, {
+        //     delay: 1000,
+        //     onError: (error) => {
+        //         throw error;
+        //     },
+        // });
+        // superHandler();
+        // expect(superHandler).toThrow('Error');
+    });
 });

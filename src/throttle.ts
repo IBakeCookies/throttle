@@ -14,55 +14,45 @@ type Callback<T, C> = (...args: C[]) => T | void;
 
 type Throttle<T, C> = Callback<T, C> & {
     cancel: () => void;
-    invoke: (...args: C[]) => T | void;
+    invoke: Callback<T, C>;
 };
 
-export function throttle<T, C>(cb: Callback<T, C>, opts: Options): Throttle<T, C> {
+export function throttle<T, C>(handler: Callback<T, C>, opts: Options): Throttle<T, C> {
     let timeoutId = null;
-    let then = 0;
+    let isThrotteled = false;
     let result;
 
-    function update(now, ...args) {
-        then = now;
-
+    function invoke(...args) {
         try {
-            result = cb(...args);
+            result = handler(...args);
         } catch (error) {
             if (opts.onError) {
                 opts.onError(error);
             }
+        } finally {
+            return result;
         }
     }
 
     function _throttle(...args) {
-        if (!opts.isLeading) {
-            timeoutId && clearTimeout(timeoutId);
+        if (isThrotteled) {
+            return result;
+        }
 
-            const now = performance.now();
+        isThrotteled = true;
 
-            then = then ?? now;
-
-            if (now - then > opts.delay) {
-                update(now, ...args);
-            }
+        if (opts.isLeading) {
+            invoke(...args);
 
             timeoutId = setTimeout(() => {
-                update(now, ...args);
+                isThrotteled = false;
             }, opts.delay);
+        } else {
+            timeoutId = setTimeout(() => {
+                isThrotteled = false;
 
-            return result;
-        }
-
-        const now = performance.now();
-
-        if (!then) {
-            update(now, ...args);
-
-            return result;
-        }
-
-        if (now - then > opts.delay) {
-            update(now, ...args);
+                invoke(...args);
+            }, opts.delay);
         }
 
         return result;
@@ -70,13 +60,20 @@ export function throttle<T, C>(cb: Callback<T, C>, opts: Options): Throttle<T, C
 
     _throttle.cancel = () => {
         clearTimeout(timeoutId);
+        isThrotteled = true;
     };
 
-    _throttle.invoke = (...args) => {
-        const now = performance.now();
-
-        update(now, ...args);
-    };
+    _throttle.invoke = (...args) => invoke(...args);
 
     return _throttle;
 }
+
+const add = (num1: number, isNum1There: boolean): string => {
+    return `${num1} ${isNum1There}`;
+};
+
+const superHandler = throttle(add, {
+    delay: 1000,
+});
+
+const a = superHandler(1, 2);

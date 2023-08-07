@@ -4,16 +4,14 @@ function wait(milliseconds) {
     });
 }
 
-function throttle(cb, opts) {
+function throttle(handler, opts) {
     let timeoutId = null;
-    let then = 0;
+    let isThrotteled = false;
     let result;
 
-    function update(now, ...args) {
-        then = now;
-
+    function invoke(...args) {
         try {
-            result = cb(...args);
+            result = handler(...args);
         } catch (error) {
             if (opts.onError) {
                 opts.onError(error);
@@ -22,37 +20,24 @@ function throttle(cb, opts) {
     }
 
     function _throttle(...args) {
-        if (!opts.isLeading) {
-            clearTimeout(timeoutId);
-            const now = performance.now();
-            then = then || now;
+        if (isThrotteled) {
+            return result;
+        }
 
-            if (now - then > opts.delay) {
-                update(now, ...args);
-                console.log('per delay');
-            }
+        isThrotteled = true;
+
+        if (opts.isLeading) {
+            invoke(...args);
 
             timeoutId = setTimeout(() => {
-                update(now, ...args);
-                console.log('timeout');
+                isThrotteled = false;
             }, opts.delay);
+        } else {
+            timeoutId = setTimeout(() => {
+                isThrotteled = false;
 
-            return result;
-        }
-
-        const now = performance.now();
-
-        if (!then) {
-            console.log('first leading execution', 'timer started');
-
-            update(now, ...args);
-
-            return result;
-        }
-
-        if (now - then > opts.delay) {
-            update(now, ...args);
-            console.log('per leading delay');
+                invoke(...args);
+            }, opts.delay);
         }
 
         return result;
@@ -62,11 +47,38 @@ function throttle(cb, opts) {
         clearTimeout(timeoutId);
     };
 
-    _throttle.invoke = (...args) => {
-        const now = performance.now();
-
-        update(now, ...args);
-    };
+    _throttle.invoke = (...args) => invoke(...args);
 
     return _throttle;
 }
+
+const add = (num1, num2) => {
+    return num1 + num2;
+};
+
+const handler = throttle(add, {
+    delay: 1000,
+    isLeading: true,
+});
+
+let output;
+
+output = handler(1, 2);
+
+console.log(output);
+
+// output = handler(1, 2);
+
+// console.log(output); // 3
+
+// wait(1500);
+
+// output = handler(1, 2);
+
+// console.log(output); // 3
+
+// setInterval(() => {
+//     output = handler(1, 1);
+
+//     console.log(output);
+// }, 100);
