@@ -21,38 +21,62 @@ export function throttle<T, C>(handler: Callback<T, C>, opts: Options): Throttle
     let timeoutId = null;
     let isThrotteled = false;
     let result;
+    let lastStartTime = 0;
 
-    function invoke(...args) {
+    const options = {
+        delay: 0,
+        isLeading: false,
+        ...opts,
+    };
+
+    function invoke(...args: C[]) {
         try {
+            // console.log(args);
+
             result = handler(...args);
         } catch (error) {
-            if (opts.onError) {
-                opts.onError(error);
+            if (options.onError) {
+                options.onError(error);
             }
         } finally {
             return result;
         }
     }
 
-    function _throttle(...args) {
-        if (isThrotteled) {
-            return result;
-        }
+    function _throttle(...args: C[]) {
+        if (options.isLeading) {
+            if (isThrotteled) {
+                return result;
+            }
 
-        isThrotteled = true;
+            isThrotteled = true;
 
-        if (opts.isLeading) {
             invoke(...args);
 
-            timeoutId = setTimeout(() => {
+            setTimeout(() => {
                 isThrotteled = false;
-            }, opts.delay);
+            }, options.delay);
         } else {
-            timeoutId = setTimeout(() => {
-                isThrotteled = false;
+            const now = performance.now();
+            lastStartTime = lastStartTime ? lastStartTime : now;
 
+            // if (now - lastStartTime <= options.delay) {
+            //     clearTimeout(timeoutId);
+            //     lastStartTime = now;
+            // }
+
+            // if (now % opts.delay) {
+            //     invoke(...args);
+            // clearTimeout(timeoutId);
+            // lastStartTime = now;
+            // }
+
+            clearTimeout(timeoutId);
+
+            timeoutId = setTimeout(() => {
                 invoke(...args);
-            }, opts.delay);
+                // lastStartTime = now;
+            }, options.delay);
         }
 
         return result;
@@ -63,7 +87,7 @@ export function throttle<T, C>(handler: Callback<T, C>, opts: Options): Throttle
         isThrotteled = true;
     };
 
-    _throttle.invoke = (...args) => invoke(...args);
+    _throttle.invoke = (...args: C[]) => invoke(...args);
 
     return _throttle;
 }
@@ -72,8 +96,9 @@ const add = (num1: number, isNum1There: boolean): string => {
     return `${num1} ${isNum1There}`;
 };
 
-const superHandler = throttle(add, {
-    delay: 1000,
-});
+// const superHandler = throttle(add, {
+// delay: 1000,
+// isLeading: true,
+// });
 
-const a = superHandler(1, 2);
+// const a = superHandler(false, 'awd');

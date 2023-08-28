@@ -56,16 +56,16 @@ const add = (num1, num2) => {
     return num1 + num2;
 };
 
-const handler = throttle(add, {
-    delay: 1000,
-    isLeading: true,
-});
+// const handler = throttle(add, {
+//     delay: 1000,
+//     isLeading: true,
+// });
 
-let output;
+// let output;
 
-output = handler(1, 2);
+// output = handler(1, 2);
 
-console.log(output);
+// console.log(output);
 
 // output = handler(1, 2);
 

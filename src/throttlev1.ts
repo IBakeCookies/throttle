@@ -31,6 +31,8 @@ export function throttle<T, C>(cb: Callback<T, C>, opts: Options): Throttle<T, C
             if (opts.onError) {
                 opts.onError(error);
             }
+        } finally {
+            return result;
         }
     }
 
@@ -76,6 +78,8 @@ export function throttle<T, C>(cb: Callback<T, C>, opts: Options): Throttle<T, C
         const now = performance.now();
 
         update(now, ...args);
+
+        return result;
     };
 
     return _throttle;

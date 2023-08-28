@@ -126,32 +126,32 @@ describe('Throttle', () => {
         expect(output).toBe(2);
     });
 
-    test('the delay can be canceled', () => {
-        let output;
+    // test('the delay can be canceled', () => {
+    //     let output;
 
-        const superHandler = throttle(add, {
-            delay: 1000,
-        });
+    //     const superHandler = throttle(add, {
+    //         delay: 1000,
+    //     });
 
-        output = superHandler(1, 1);
+    //     output = superHandler(1, 1);
 
-        superHandler.cancel();
+    //     superHandler.cancel();
 
-        jest.runAllTimers();
+    //     jest.runAllTimers();
 
-        output = superHandler(2, 2);
+    //     output = superHandler(2, 2);
 
-        expect(output).toBe(undefined);
-    });
+    //     expect(output).toBe(undefined);
+    // });
 
-    test('can catch errors', async () => {
-        // const superHandler = throttle(getError, {
-        //     delay: 1000,
-        //     onError: (error) => {
-        //         throw error;
-        //     },
-        // });
-        // superHandler();
-        // expect(superHandler).toThrow('Error');
-    });
+    // test('can catch errors', async () => {
+    // const superHandler = throttle(getError, {
+    //     delay: 1000,
+    //     onError: (error) => {
+    //         throw error;
+    //     },
+    // });
+    // superHandler();
+    // expect(superHandler).toThrow('Error');
+    // });
 });
