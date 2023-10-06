@@ -1,104 +1,79 @@
-export function wait(milliseconds) {
-    return new Promise((resolve) => {
-        setTimeout(() => resolve(true), milliseconds);
-    });
-}
-
-interface Options {
+interface Config {
     delay: number;
     isLeading?: boolean;
     onError?: (error: Error) => void;
 }
 
-type Callback<T, C> = (...args: C[]) => T | void;
+type Invoker<I extends (...args: Parameters<I>) => ReturnType<I> | void> = (
+    ...args: Parameters<I>
+) => ReturnType<I> | void;
 
-type Throttle<T, C> = Callback<T, C> & {
+type Throttle<I extends (...args: Parameters<I>) => ReturnType<I> | void> = Invoker<I> & {
     cancel: () => void;
-    invoke: Callback<T, C>;
+    invoke: Invoker<I>;
 };
 
-export function throttle<T, C>(handler: Callback<T, C>, opts: Options): Throttle<T, C> {
-    let timeoutId = null;
+export function throttle<I extends (...args: Parameters<I>) => ReturnType<I>>(
+    handler: I,
+    config: Config,
+): Throttle<I> {
+    let timeoutId: ReturnType<typeof setTimeout>;
     let isThrotteled = false;
-    let result;
-    let lastStartTime = 0;
+    let result: ReturnType<I> | void;
+    let lastArgs: Parameters<I>;
 
-    const options = {
-        delay: 0,
-        isLeading: false,
-        ...opts,
-    };
+    const { delay = 0, isLeading = false } = config;
 
-    function invoke(...args: C[]) {
-        try {
-            // console.log(args);
-
-            result = handler(...args);
-        } catch (error) {
-            if (options.onError) {
-                options.onError(error);
-            }
-        } finally {
-            return result;
-        }
-    }
-
-    function _throttle(...args: C[]) {
-        if (options.isLeading) {
+    function _throttle(...args: Parameters<I>) {
+        if (isLeading) {
             if (isThrotteled) {
                 return result;
             }
 
             isThrotteled = true;
 
-            invoke(...args);
+            invoke.apply(this, args);
 
             setTimeout(() => {
                 isThrotteled = false;
-            }, options.delay);
-        } else {
-            const now = performance.now();
-            lastStartTime = lastStartTime ? lastStartTime : now;
+            }, delay);
 
-            // if (now - lastStartTime <= options.delay) {
-            //     clearTimeout(timeoutId);
-            //     lastStartTime = now;
-            // }
-
-            // if (now % opts.delay) {
-            //     invoke(...args);
-            // clearTimeout(timeoutId);
-            // lastStartTime = now;
-            // }
-
-            clearTimeout(timeoutId);
-
-            timeoutId = setTimeout(() => {
-                invoke(...args);
-                // lastStartTime = now;
-            }, options.delay);
+            return result;
         }
+
+        if (!timeoutId) {
+            timeoutId = setTimeout(() => {
+                invoke.apply(this, lastArgs);
+
+                timeoutId = null;
+            }, delay);
+
+            return result;
+        }
+
+        lastArgs = args;
 
         return result;
     }
 
+    function invoke(...args: Parameters<I>) {
+        try {
+            result = handler.bind(this)(...args);
+        } catch (error) {
+            if (config.onError) {
+                config.onError(error);
+            }
+        } finally {
+            return result;
+        }
+    }
+
     _throttle.cancel = () => {
         clearTimeout(timeoutId);
-        isThrotteled = true;
+        isThrotteled = false;
     };
 
-    _throttle.invoke = (...args: C[]) => invoke(...args);
+    _throttle.invoke = invoke;
 
     return _throttle;
 }
-
-const add = (num1: number, isNum1There: boolean): string => {
-    return `${num1} ${isNum1There}`;
-};
-
-// const superHandler = throttle(add, {
-// delay: 1000,
-// isLeading: true,
-// });
-
-// const a = superHandler(false, 'awd');
