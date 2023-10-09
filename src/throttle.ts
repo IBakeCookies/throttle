@@ -24,6 +24,26 @@ export function throttle<I extends (...args: Parameters<I>) => ReturnType<I>>(
 
     const { delay = 0, isLeading = false } = config;
 
+    function invoke(...args: Parameters<I>) {
+        try {
+            result = handler.apply(this, args);
+        } catch (error) {
+            if (config.onError) {
+                config.onError(error);
+            }
+        } finally {
+            return result;
+        }
+    }
+
+    function cancel() {
+        clearTimeout(timeoutId);
+        isThrotteled = false;
+    }
+
+    _throttle.cancel = cancel;
+    _throttle.invoke = invoke;
+
     function _throttle(...args: Parameters<I>) {
         if (isLeading) {
             if (isThrotteled) {
@@ -55,25 +75,6 @@ export function throttle<I extends (...args: Parameters<I>) => ReturnType<I>>(
 
         return result;
     }
-
-    function invoke(...args: Parameters<I>) {
-        try {
-            result = handler.bind(this)(...args);
-        } catch (error) {
-            if (config.onError) {
-                config.onError(error);
-            }
-        } finally {
-            return result;
-        }
-    }
-
-    _throttle.cancel = () => {
-        clearTimeout(timeoutId);
-        isThrotteled = false;
-    };
-
-    _throttle.invoke = invoke;
 
     return _throttle;
 }
